@@ -1,0 +1,2 @@
+# msbuildLib
+msbuild reusable code
