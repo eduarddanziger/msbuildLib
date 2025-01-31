@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+    <Import Project="$(MSBuildThisFileDirectory)Ed.Common.targets" />
+
+    <PropertyGroup>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    </PropertyGroup>
+
+    <Target Name="CreateVersionInformation"
+            BeforeTargets="BeforeBuild"
+            DependsOnTargets="ParseWorkspaceDescription">
+        <PropertyGroup>
+            <VersionInformation>$(ProjectDir)$(IntermediateOutputPath)VersionInformation.cs</VersionInformation>
+        </PropertyGroup>
+        <message Importance="high" text="VersionInformation: $(VersionInformation)" />
+        <ItemGroup>
+            <AssemblyAttributes Include="AssemblyVersion">
+                <_Parameter1>$(FileVersion)</_Parameter1>
+            </AssemblyAttributes>
+            <AssemblyAttributes Include="AssemblyFileVersion">
+                <_Parameter1>$(FileVersion)</_Parameter1>
+            </AssemblyAttributes>
+            <AssemblyAttributes Include="AssemblyInformationalVersion">
+                <_Parameter1>$(Version)</_Parameter1>
+            </AssemblyAttributes>
+            <AssemblyAttributes Include="AssemblyCopyright">
+                <_Parameter1>$(Copyright)</_Parameter1>
+            </AssemblyAttributes>
+            <AssemblyAttributes Include="AssemblyCompany">
+                <_Parameter1>$(Company)</_Parameter1>
+            </AssemblyAttributes>
+            <AssemblyAttributes Include="AssemblyDescription">
+                <_Parameter1>$(Description)</_Parameter1>
+            </AssemblyAttributes>
+            <AssemblyAttributes Include="AssemblyProduct">
+                <_Parameter1>$(Product)</_Parameter1>
+            </AssemblyAttributes>
+            <AssemblyAttributes Include="AssemblyTitle">
+                <_Parameter1>$(TargetFileName) ($(TargetFramework))</_Parameter1>
+            </AssemblyAttributes>
+            <Compile Include="$(VersionInformation)" />
+        </ItemGroup>
+        <WriteCodeFragment Language="C#"
+                           OutputFile="$(VersionInformation)"
+                           AssemblyAttributes="@(AssemblyAttributes)" />
+    </Target>
+
+    <Target Name="CleanVersionInformation" AfterTargets="Clean">
+        <Delete Files="$(VersionInformation)" />
+    </Target>
+
+</Project>

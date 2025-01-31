@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+<!-- Versioning and NuGet Attributes-->
+    <PropertyGroup>
+        <DescriptionScript Condition=" '$(DescriptionScript)' == '' "><![CDATA[git describe --tags --match Release-*.*.* --long]]></DescriptionScript>
+        <ArtifactsDirectory Condition=" '$(ArtifactsDirectory)' == '' ">$(SolutionDir)artifacts\</ArtifactsDirectory>
+        <Company>ED</Company>
+        <Authors Condition=" '$(Authors)' == '' ">$(Company)</Authors>
+        <Copyright>Copyright © 2024-2025 $(Company)</Copyright>
+        <PackageOutputPath>$(ArtifactsDirectory)</PackageOutputPath>
+        <GetPackageVersionDependsOn>ParseWorkspaceDescription;$(GetPackageVersionDependsOn)</GetPackageVersionDependsOn>
+    </PropertyGroup>
+
+    <Target Name="QueryWorkspaceDescription">
+        <Exec Command="$(DescriptionScript)" ConsoleToMSBuild="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="WorkspaceDescription" />
+        </Exec>
+    </Target>
+
+    <Target Name="ParseWorkspaceDescription" DependsOnTargets="QueryWorkspaceDescription" BeforeTargets="GenerateNuspec;PrepareForBuild">
+        <PropertyGroup>
+            <VersionThree>$(WorkspaceDescription.Split('-')[1])</VersionThree>
+            <VersionFourthNumber>$(WorkspaceDescription.Split('-')[2])</VersionFourthNumber>
+            <PaddedVersionFourthNumber>$(VersionFourthNumber)</PaddedVersionFourthNumber> 
+            <PaddedVersionFourthNumber Condition="$(VersionFourthNumber) &lt; 100">0$(VersionFourthNumber)</PaddedVersionFourthNumber> 
+            <PaddedVersionFourthNumber Condition="$(VersionFourthNumber) &lt; 10">00$(VersionFourthNumber)</PaddedVersionFourthNumber> 
+            <VersionThree Condition=" $(VersionFourthNumber) != '0' ">$(VersionThree.Split('.')[0]).$(VersionThree.Split('.')[1]).$([MSBuild]::Add($(VersionThree.Split('.')[2]), 1))</VersionThree>
+            <PackageVersion>$(VersionThree)</PackageVersion>
+            <PackageVersion Condition=" $(VersionFourthNumber) != '0' ">$(VersionThree)-RC$(PaddedVersionFourthNumber)</PackageVersion>
+            <FileVersion>$(VersionThree).$(VersionFourthNumber)</FileVersion>
+            <Version>$(PackageVersion)</Version>
+        </PropertyGroup>
+        <message Importance="high" text="Version, PackageVersion: $(Version). FileVersion: $(FileVersion)." />
+    </Target>
+
+<!-- Delete old NuGets -->
+    <Target Name="CleanUpOldNupkgs" BeforeTargets="GenerateNuspec">
+        <ItemGroup>
+            <FilesToDelete Include="$(ArtifactsDirectory)$(PackageId).*.*" />
+        </ItemGroup>
+        <message Condition=" '@(FilesToDelete)' != '' " Importance="high" text="Old packages to delete: @(FilesToDelete)" />
+        <message Condition=" '@(FilesToDelete)' == '' " Importance="high" text="Old packages to delete: None" />
+        <Delete Condition=" '@(FilesToDelete)' != '' " Files="@(FilesToDelete)" />
+    </Target>
+    
+<!-- Signing -->
+    <Target Name="Sign" Condition=" $(SignExeAndMsi) == 'True' AND 
+        ($(OutputType) == 'Exe' OR $(OutputType) == 'WinExe' OR $(OutputType) == 'Package') "
+        AfterTargets="Build">
+        <message Text="Signing: CODE_SIGNING_CERT: $(CODE_SIGNING_CERT), TargetPath: $(TargetPath)" importance="high" />
+        <PropertyGroup>
+          <UWPSDKVersion>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetLatestSDKTargetPlatformVersion('Windows', '10.0'))</UWPSDKVersion>
+          <UWPSDKPath>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetPlatformSDKLocation('Windows', '10.0'))bin\$(UWPSDKVersion)</UWPSDKPath>
+          <UWPSDKPathX64>$(UWPSDKPath)\x64</UWPSDKPathX64>
+          <SignToolPathX64>$(UWPSDKPathX64)\signtool.exe</SignToolPathX64>
+        </PropertyGroup>
+        <Exec Command="&quot;$(SignToolPathX64)&quot; sign /fd sha256 /td SHA256 /f &quot;$(CODE_SIGNING_CERT)&quot; /csp &quot;eToken Base Cryptographic Provider&quot; /k &quot;$(SIGN_KEY_CONTAINER)&quot; /v /debug /tr &quot;$(CODE_SIGNING_TIMESTAMP_URL)&quot; &quot;$(TargetPath)&quot;" StandardOutputImportance="high" />
+    </Target>
+
+<!-- Include specific target-files -->
+    <Import Project="$(SolutionDir)$(SolutionName).Common.targets"
+            Condition="Exists('$(SolutionDir)$(SolutionName).Common.targets')" />
+    <Import Condition="Exists('$(LocalTargets)')" Project="$(LocalTargets)" />
+
+</Project>

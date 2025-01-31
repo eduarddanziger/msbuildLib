@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+    <Import Project="$(MSBuildThisFileDirectory)Ed.Common.targets" />
+
+<!-- Wix  -->
+    <Import Project="$(WixTargetsPath)" Condition=" '$(WixTargetsPath)' != '' " />
+    <Import Project="$(MSBuildExtensionsPath)\Microsoft\WiX\v3.x\Wix.targets"
+            Condition=" '$(WixTargetsPath)' == '' AND Exists('$(MSBuildExtensionsPath)\Microsoft\WiX\v3.x\Wix.targets') " />
+
+    <PropertyGroup>
+        <IncludeSearchPaths Condition=" '$(IncludeSearchPaths)' != '' ">$(IncludeSearchPaths);</IncludeSearchPaths>
+        <IncludeSearchPaths>$(IncludeSearchPaths)$(IntermediateOutputPath)</IncludeSearchPaths>
+    </PropertyGroup>
+
+<!-- Versioning -->
+    <PropertyGroup>
+        <VersionInformation>$(IntermediateOutputPath)ProductVersion.wxi</VersionInformation>
+    </PropertyGroup>
+
+    <Target Name="CleanVersionInformation" AfterTargets="Clean">
+        <Delete Files="$(VersionInformation)" />
+    </Target>
+
+    <Target Name="CreateVersionInformation"
+            BeforeTargets="BeforeBuild"
+            DependsOnTargets="ParseWorkspaceDescription"
+            Outputs="$(VersionInformation)">
+        <ItemGroup>
+            <ProductVersionItem Include="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;" />
+            <ProductVersionItem Include="&lt;Include&gt;" />
+            <ProductVersionItem Include="&lt;?define ProductVersion=&quot;$(FileVersion)&quot;?&gt;" />
+            <ProductVersionItem Include="&lt;/Include&gt;" />
+        </ItemGroup>
+        <WriteLinesToFile File="$(VersionInformation)"
+                          Lines="@(ProductVersionItem)"
+                          Overwrite="true"
+                          Encoding="utf-8" />
+    </Target>
+
+<!-- Copying MSIs to artifacts -->
+    <Target Name="CopyMsiToArtifact" Condition=" $(OutputType) == 'Package' " AfterTargets="Sign">
+        <ItemGroup>
+            <FilesToDelete Include="$(SolutionDir)artifacts\$(OutputName)*.msi" />
+        </ItemGroup>
+        <Delete Files="@(FilesToDelete)" />
+        <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(SolutionDir)artifacts\$(OutputName)-$(Version).msi" />
+    </Target>
+
+</Project>
