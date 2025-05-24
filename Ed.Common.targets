@@ -2,27 +2,34 @@
 
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
-<!-- Versioning and NuGet Attributes-->
+<!-- Versioning, Copyright etc. -->
     <PropertyGroup>
-        <DescriptionScript Condition=" '$(DescriptionScript)' == '' "><![CDATA[git describe --tags --match Release-*.*.* --long]]></DescriptionScript>
+        <ReleaseTagDescriptionScript Condition=" '$(ReleaseTagDescriptionScript)' == '' "><![CDATA[git describe --tags --match Release-*.*.* --long]]></ReleaseTagDescriptionScript>
+        <LatestCommitTimestampScript Condition=" '$(LatestCommitTimestampScript)' == '' "><![CDATA[git log -1 --format=%cd --date=format:'%Y-%m-%MT%H:%M:%S%z']]></LatestCommitTimestampScript>
         <ArtifactsDirectory Condition=" '$(ArtifactsDirectory)' == '' ">$(SolutionDir)artifacts\</ArtifactsDirectory>
         <Company>ED</Company>
         <Authors Condition=" '$(Authors)' == '' ">$(Company)</Authors>
         <Copyright>Copyright © 2024-2025 $(Company)</Copyright>
         <PackageOutputPath>$(ArtifactsDirectory)</PackageOutputPath>
-        <GetPackageVersionDependsOn>ParseWorkspaceDescription;$(GetPackageVersionDependsOn)</GetPackageVersionDependsOn>
+        <GetPackageVersionDependsOn>ParseReleaseTagDescription;$(GetPackageVersionDependsOn)</GetPackageVersionDependsOn>
     </PropertyGroup>
 
-    <Target Name="QueryWorkspaceDescription">
-        <Exec Command="$(DescriptionScript)" ConsoleToMSBuild="true">
-            <Output TaskParameter="ConsoleOutput" PropertyName="WorkspaceDescription" />
+    <Target Name="QueryReleaseTagDescription">
+        <Exec Command="$(ReleaseTagDescriptionScript)" ConsoleToMSBuild="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="ReleaseTagDescription" />
         </Exec>
     </Target>
 
-    <Target Name="ParseWorkspaceDescription" DependsOnTargets="QueryWorkspaceDescription" BeforeTargets="GenerateNuspec;PrepareForBuild">
+    <Target Name="QueryLatestCommitTimestamp">
+        <Exec Command="$(LatestCommitTimestampScript)" ConsoleToMSBuild="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="LatestCommitTimestamp" />
+        </Exec>
+    </Target>
+
+    <Target Name="ParseReleaseTagDescription" DependsOnTargets="QueryReleaseTagDescription;QueryLatestCommitTimestamp" BeforeTargets="GenerateNuspec;PrepareForBuild">
         <PropertyGroup>
-            <VersionThree>$(WorkspaceDescription.Split('-')[1])</VersionThree>
-            <VersionFourthNumber>$(WorkspaceDescription.Split('-')[2])</VersionFourthNumber>
+            <VersionThree>$(ReleaseTagDescription.Split('-')[1])</VersionThree>
+            <VersionFourthNumber>$(ReleaseTagDescription.Split('-')[2])</VersionFourthNumber>
             <PaddedVersionFourthNumber>$(VersionFourthNumber)</PaddedVersionFourthNumber> 
             <PaddedVersionFourthNumber Condition="$(VersionFourthNumber) &lt; 100">0$(VersionFourthNumber)</PaddedVersionFourthNumber> 
             <PaddedVersionFourthNumber Condition="$(VersionFourthNumber) &lt; 10">00$(VersionFourthNumber)</PaddedVersionFourthNumber> 
@@ -31,6 +38,7 @@
             <PackageVersion Condition=" $(VersionFourthNumber) != '0' ">$(VersionThree)-RC$(PaddedVersionFourthNumber)</PackageVersion>
             <FileVersion>$(VersionThree).$(VersionFourthNumber)</FileVersion>
             <Version>$(PackageVersion)</Version>
+            <Description>$(LatestCommitTimestamp)</Description>
         </PropertyGroup>
         <message Importance="high" text="Version, PackageVersion: $(Version). FileVersion: $(FileVersion)." />
     </Target>

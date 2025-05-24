@@ -10,7 +10,7 @@
 
     <Target Name="CreateVersionInformation"
             BeforeTargets="BeforeBuild"
-            DependsOnTargets="ParseWorkspaceDescription">
+            DependsOnTargets="ParseReleaseTagDescription">
         <PropertyGroup>
             <VersionInformation>$(ProjectDir)$(IntermediateOutputPath)VersionInformation.cs</VersionInformation>
         </PropertyGroup>
