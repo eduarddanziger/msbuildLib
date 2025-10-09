@@ -34,9 +34,9 @@
             <PaddedVersionFourthNumber Condition="$(VersionFourthNumber) &lt; 100">0$(VersionFourthNumber)</PaddedVersionFourthNumber> 
             <PaddedVersionFourthNumber Condition="$(VersionFourthNumber) &lt; 10">00$(VersionFourthNumber)</PaddedVersionFourthNumber> 
             <VersionThree Condition=" $(VersionFourthNumber) != '0' ">$(VersionThree.Split('.')[0]).$(VersionThree.Split('.')[1]).$([MSBuild]::Add($(VersionThree.Split('.')[2]), 1))</VersionThree>
-            <PackageVersion>$(VersionThree)</PackageVersion>
-            <PackageVersion Condition=" $(VersionFourthNumber) != '0' ">$(VersionThree)-RC$(PaddedVersionFourthNumber)</PackageVersion>
             <FileVersion>$(VersionThree).$(VersionFourthNumber)</FileVersion>
+            <PackageVersion>v$(VersionThree)</PackageVersion>
+            <PackageVersion Condition=" $(VersionFourthNumber) != '0' ">v$(VersionThree)-rc$(PaddedVersionFourthNumber)</PackageVersion>
             <Version>$(PackageVersion)</Version>
             <Description>$(LatestCommitTimestamp)</Description>
         </PropertyGroup>
