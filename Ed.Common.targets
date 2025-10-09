@@ -2,11 +2,9 @@
 
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
-    <!-- Versioning, Copyright etc. -->
+<!-- Versioning, Copyright etc. -->
     <PropertyGroup>
-        <!-- Prefer new SemVer tags: vMAJOR.MINOR.PATCH ; fallback to legacy Release-MAJOR.MINOR.PATCH -->
-        <ReleaseTagDescriptionScript Condition=" '$(ReleaseTagDescriptionScript)' == '' "><![CDATA[powershell -NoProfile -Command "$d = git describe --tags --long --match 'v*.*.*' 2>$null; if(-not $?) { $d = git describe --tags --long --match 'Release-*.*.*' }; Write-Output $d" ]]></ReleaseTagDescriptionScript>
-        <!-- Escape % as %% for cmd.exe -->
+        <ReleaseTagDescriptionScript Condition=" '$(ReleaseTagDescriptionScript)' == '' "><![CDATA[git describe --tags --match Release-*.*.* --long]]></ReleaseTagDescriptionScript>
         <LatestCommitTimestampScript Condition=" '$(LatestCommitTimestampScript)' == '' "><![CDATA[git log -1 --format=%%cI]]></LatestCommitTimestampScript>
         <ArtifactsDirectory Condition=" '$(ArtifactsDirectory)' == '' ">$(SolutionDir)artifacts\</ArtifactsDirectory>
         <Company>ED</Company>
@@ -28,85 +26,50 @@
         </Exec>
     </Target>
 
-    <!-- Parse git describe output for both patterns:
-       v1.2.3-0-gHASH        (new)
-       v1.2.3-5-gHASH        (distance 5 -> pre-release)
-       Release-1.2.3-0-gHASH (legacy)
-       Release-1.2.3-7-gHASH (legacy + distance)
-  -->
-    <Target Name="ParseReleaseTagDescription" DependsOnTargets="QueryReleaseTagDescription;QueryLatestCommitTimestamp"
-            BeforeTargets="GenerateNuspec;PrepareForBuild">
+    <Target Name="ParseReleaseTagDescription" DependsOnTargets="QueryReleaseTagDescription;QueryLatestCommitTimestamp" BeforeTargets="GenerateNuspec;PrepareForBuild">
         <PropertyGroup>
-            <!-- Split parts -->
-            <_Part0>$(ReleaseTagDescription.Split('-')[0])</_Part0>
-            <_Part1>$(ReleaseTagDescription.Split('-')[1])</_Part1>
-            <_Part2>$(ReleaseTagDescription.Split('-')[2])</_Part2>
-            <!-- Determine if new style tag (starts with 'v') -->
-            <_IsVTag>false</_IsVTag>
-            <_IsVTag Condition="$([System.String]::Copy($(_Part0)).StartsWith('v'))">true</_IsVTag>
-            <_IsLegacyTag>false</_IsLegacyTag>
-            <_IsLegacyTag Condition="$([System.String]::Copy($(_Part0)).Equals('Release'))">true</_IsLegacyTag>
-            <!-- Base semantic version (no leading 'v') -->
-            <VersionBase Condition="$(_IsVTag) == 'true'">$([System.String]::Copy($(_Part0)).Substring(1))</VersionBase>
-            <VersionBase Condition="$(_IsLegacyTag) == 'true'">$(_Part1)</VersionBase>
-            <!-- Distance from tag -->
-            <Distance Condition="$(_IsVTag) == 'true'">$(_Part1)</Distance>
-            <Distance Condition="$(_IsLegacyTag) == 'true'">$(_Part2)</Distance>
-            <!-- Normalize in case Distance not set -->
-            <Distance Condition=" '$(Distance)' == '' ">0</Distance>
-            <!-- If distance>0 then increment patch component for PackageVersion base (like previous logic) -->
-            <_Major>$([System.String]::Copy($(VersionBase)).Split('.')[0])</_Major>
-            <_Minor>$([System.String]::Copy($(VersionBase)).Split('.')[1])</_Minor>
-            <_Patch>$([System.String]::Copy($(VersionBase)).Split('.')[2])</_Patch>
-            <_NextPatch Condition=" '$(Distance)' != '0' ">$([MSBuild]::Add($(_Patch), 1))</_NextPatch>
-            <_EffectivePatch Condition=" '$(Distance)' == '0' ">$(_Patch)</_EffectivePatch>
-            <_EffectivePatch Condition=" '$(Distance)' != '0' ">$(_NextPatch)</_EffectivePatch>
-            <VersionThree>$(_Major).$(_Minor).$(_EffectivePatch)</VersionThree>
-            <!-- Padding for RC numbering -->
-            <PaddedDistance>$(Distance)</PaddedDistance>
-            <PaddedDistance Condition=" $(Distance) &lt; 100">0$(Distance)</PaddedDistance>
-            <PaddedDistance Condition=" $(Distance) &lt; 10">00$(Distance)</PaddedDistance>
-            <!-- Compose package version -->
+            <VersionThree>$(ReleaseTagDescription.Split('-')[1])</VersionThree>
+            <VersionFourthNumber>$(ReleaseTagDescription.Split('-')[2])</VersionFourthNumber>
+            <PaddedVersionFourthNumber>$(VersionFourthNumber)</PaddedVersionFourthNumber> 
+            <PaddedVersionFourthNumber Condition="$(VersionFourthNumber) &lt; 100">0$(VersionFourthNumber)</PaddedVersionFourthNumber> 
+            <PaddedVersionFourthNumber Condition="$(VersionFourthNumber) &lt; 10">00$(VersionFourthNumber)</PaddedVersionFourthNumber> 
+            <VersionThree Condition=" $(VersionFourthNumber) != '0' ">$(VersionThree.Split('.')[0]).$(VersionThree.Split('.')[1]).$([MSBuild]::Add($(VersionThree.Split('.')[2]), 1))</VersionThree>
             <PackageVersion>$(VersionThree)</PackageVersion>
-            <PackageVersion Condition=" '$(Distance)' != '0' ">$(VersionThree)-rc$(PaddedDistance)</PackageVersion>
-            <FileVersion>$(VersionBase).$(Distance)</FileVersion>
+            <PackageVersion Condition=" $(VersionFourthNumber) != '0' ">$(VersionThree)-RC$(PaddedVersionFourthNumber)</PackageVersion>
+            <FileVersion>$(VersionThree).$(VersionFourthNumber)</FileVersion>
             <Version>$(PackageVersion)</Version>
             <Description>$(LatestCommitTimestamp)</Description>
         </PropertyGroup>
-        <Message Importance="high"
-                 Text="Git describe: $(ReleaseTagDescription). Version(ProductVersion)=$(Version) FileVersion=$(FileVersion) Distance=$(Distance)" />
+        <message Importance="high" text="Version, PackageVersion: $(Version). FileVersion: $(FileVersion)." />
     </Target>
 
-    <!-- Delete old NuGets -->
+<!-- Delete old NuGets -->
     <Target Name="CleanUpOldNupkgs" BeforeTargets="GenerateNuspec">
         <ItemGroup>
             <FilesToDelete Include="$(ArtifactsDirectory)$(PackageId).*.*" />
         </ItemGroup>
-        <Message Condition=" '@(FilesToDelete)' != '' " Importance="high"
-                 Text="Old packages to delete: @(FilesToDelete)" />
-        <Message Condition=" '@(FilesToDelete)' == '' " Importance="high" Text="Old packages to delete: None" />
+        <message Condition=" '@(FilesToDelete)' != '' " Importance="high" text="Old packages to delete: @(FilesToDelete)" />
+        <message Condition=" '@(FilesToDelete)' == '' " Importance="high" text="Old packages to delete: None" />
         <Delete Condition=" '@(FilesToDelete)' != '' " Files="@(FilesToDelete)" />
     </Target>
-
-    <!-- Signing -->
-    <Target Name="SignAfterPublish" Condition=" Exists('$(ProjectDir)GenerateCertificate.ps1') " AfterTargets="Publish">
-        <Message Text="Signing: TargetPath: $(TargetPath)" Importance="high" />
+    
+<!-- Signing -->
+    <Target Name="SignAfterPublish" Condition=" Exists('$(ProjectDir)GenerateCertificate.ps1') "
+        AfterTargets="Publish">
+        <message Text="Signing: TargetPath: $(TargetPath)" importance="high" />
         <PropertyGroup>
-            <CertificatePassword Condition=" '$(CertificatePassword)' == '' ">P@SsW0Rd!</CertificatePassword>
-            <PublishedExePathName>$(PublishDir)$(AssemblyName).exe</PublishedExePathName>
-            <UWPSDKVersion>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetLatestSDKTargetPlatformVersion('Windows', '10.0'))</UWPSDKVersion>
-            <UWPSDKPath>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetPlatformSDKLocation('Windows', '10.0'))bin\$(UWPSDKVersion)</UWPSDKPath>
-            <UWPSDKPathX64>$(UWPSDKPath)\x64</UWPSDKPathX64>
-            <SignToolPathX64>$(UWPSDKPathX64)\signtool.exe</SignToolPathX64>
+          <CertificatePassword Condition=" '$(CertificatePassword)' == '' ">P@SsW0Rd!</CertificatePassword>
+          <PublishedExePathName>$(PublishDir)$(AssemblyName).exe</PublishedExePathName>
+          <UWPSDKVersion>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetLatestSDKTargetPlatformVersion('Windows', '10.0'))</UWPSDKVersion>
+          <UWPSDKPath>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetPlatformSDKLocation('Windows', '10.0'))bin\$(UWPSDKVersion)</UWPSDKPath>
+          <UWPSDKPathX64>$(UWPSDKPath)\x64</UWPSDKPathX64>
+          <SignToolPathX64>$(UWPSDKPathX64)\signtool.exe</SignToolPathX64>
         </PropertyGroup>
-        <Exec
-            Command="pwsh -ExecutionPolicy Bypass -File &quot;$(ProjectDir)GenerateCertificate.ps1&quot; -CertificatePassword $(CertificatePassword)" />
-        <Exec
-            Command="&quot;$(SignToolPathX64)&quot; sign /fd sha256 /td sha256 /f &quot;$(ProjectDir)CodeSign.pfx&quot; /p $(CertificatePassword) /tr http://timestamp.digicert.com &quot;$(PublishedExePathName)&quot;"
-            StandardOutputImportance="high" />
+        <Exec Command="pwsh -ExecutionPolicy Bypass -File &quot;$(ProjectDir)GenerateCertificate.ps1&quot; -CertificatePassword $(CertificatePassword)" />
+        <Exec Command="&quot;$(SignToolPathX64)&quot; sign /fd sha256 /td sha256 /f &quot;$(ProjectDir)CodeSign.pfx&quot; /p $(CertificatePassword) /tr http://timestamp.digicert.com &quot;$(PublishedExePathName)&quot;" StandardOutputImportance="high" />
     </Target>
 
-    <!-- Include specific target-files -->
+<!-- Include specific target-files -->
     <Import Project="$(SolutionDir)$(SolutionName).Common.targets"
             Condition="Exists('$(SolutionDir)$(SolutionName).Common.targets')" />
     <Import Condition="Exists('$(LocalTargets)')" Project="$(LocalTargets)" />
