@@ -33,11 +33,11 @@
             <VersionThree Condition=" $(VersionFourthNumber) != '0' ">$(VersionThree.Split('.')[0]).$(VersionThree.Split('.')[1]).$([MSBuild]::Add($(VersionThree.Split('.')[2]), 1))</VersionThree>
             <FileVersion>$(VersionThree).$(VersionFourthNumber)</FileVersion>
             <PackageVersion>v$(VersionThree)</PackageVersion>
-            <PackageVersion Condition=" $(VersionFourthNumber) != '0' ">v$(VersionThree)-rc.$(VersionFourthNumber)</PackageVersion>
-            <Version>$(PackageVersion)</Version>
+            <PackageVersion Condition=" $(VersionFourthNumber) != '0' ">$(VersionThree)-rc.$(VersionFourthNumber)</PackageVersion>
+            <Version>v$(PackageVersion)</Version>
             <Description>$(LatestCommitTimestamp)</Description>
         </PropertyGroup>
-        <message Importance="high" text="Version, PackageVersion: $(Version). FileVersion: $(FileVersion)." />
+        <message Importance="high" text="Version: $(Version), PackageVersion: $(PackageVersion). FileVersion: $(FileVersion)." />
     </Target>
 
 <!-- Delete old NuGets -->
