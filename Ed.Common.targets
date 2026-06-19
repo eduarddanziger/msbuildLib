@@ -8,9 +8,9 @@
         <LatestCommitTimestampScript Condition=" '$(LatestCommitTimestampScript)' == '' and '$(OS)' == 'Windows_NT' "><![CDATA[git log -1 --format=%%cI]]></LatestCommitTimestampScript>
         <LatestCommitTimestampScript Condition=" '$(LatestCommitTimestampScript)' == '' and '$(OS)' != 'Windows_NT' "><![CDATA[git log -1 --format=%cI]]></LatestCommitTimestampScript>
         <ArtifactsDirectory Condition=" '$(ArtifactsDirectory)' == '' ">$(SolutionDir)artifacts\</ArtifactsDirectory>
-        <Company>ED</Company>
+        <Company>Eduard Danziger</Company>
         <Authors Condition=" '$(Authors)' == '' ">$(Company)</Authors>
-        <Copyright>Copyright © 2024-2025 $(Company)</Copyright>
+        <Copyright>Copyright © 2025-$([System.DateTime]::UtcNow.Year) $(Company)</Copyright>
         <PackageOutputPath>$(ArtifactsDirectory)</PackageOutputPath>
         <GetPackageVersionDependsOn>ParseReleaseTagDescription;$(GetPackageVersionDependsOn)</GetPackageVersionDependsOn>
     </PropertyGroup>
@@ -38,7 +38,7 @@
             <Version>$(PackageVersion)</Version>
             <Description>$(LatestCommitTimestamp)</Description>
         </PropertyGroup>
-        <message Importance="high" text="Version, PackageVersion: $(Version). FileVersion: $(FileVersion)." />
+        <Message Importance="high" text="Version, PackageVersion: $(Version). FileVersion: $(FileVersion)." />
     </Target>
 
 <!-- Delete old NuGets -->
@@ -46,15 +46,15 @@
         <ItemGroup>
             <FilesToDelete Include="$(ArtifactsDirectory)$(PackageId).*.*" />
         </ItemGroup>
-        <message Condition=" '@(FilesToDelete)' != '' " Importance="high" text="Old packages to delete: @(FilesToDelete)" />
-        <message Condition=" '@(FilesToDelete)' == '' " Importance="high" text="Old packages to delete: None" />
+        <Message Condition=" '@(FilesToDelete)' != '' " Importance="high" text="Old packages to delete: @(FilesToDelete)" />
+        <Message Condition=" '@(FilesToDelete)' == '' " Importance="high" text="Old packages to delete: None" />
         <Delete Condition=" '@(FilesToDelete)' != '' " Files="@(FilesToDelete)" />
     </Target>
     
 <!-- Signing -->
     <Target Name="SignAfterPublish" Condition=" Exists('$(ProjectDir)GenerateCertificate.ps1') "
         AfterTargets="Publish">
-        <message Text="Signing: TargetPath: $(TargetPath)" importance="high" />
+        <Message Text="Signing: TargetPath: $(TargetPath)" Importance="high" />
         <PropertyGroup>
           <CertificatePassword Condition=" '$(CertificatePassword)' == '' ">P@SsW0Rd!</CertificatePassword>
           <PublishedExePathName>$(PublishDir)$(AssemblyName).exe</PublishedExePathName>
