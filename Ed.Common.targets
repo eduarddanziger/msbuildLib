@@ -5,7 +5,8 @@
 <!-- Versioning, Copyright etc. -->
     <PropertyGroup>
         <ReleaseTagDescriptionScript Condition=" '$(ReleaseTagDescriptionScript)' == '' "><![CDATA[git describe --tags --match Release-*.*.* --long]]></ReleaseTagDescriptionScript>
-        <LatestCommitTimestampScript Condition=" '$(LatestCommitTimestampScript)' == '' "><![CDATA[git log -1 --format=%%cI]]></LatestCommitTimestampScript>
+        <LatestCommitTimestampScript Condition=" '$(LatestCommitTimestampScript)' == '' and '$(OS)' == 'Windows_NT' "><![CDATA[git log -1 --format=%%cI]]></LatestCommitTimestampScript>
+        <LatestCommitTimestampScript Condition=" '$(LatestCommitTimestampScript)' == '' and '$(OS)' != 'Windows_NT' "><![CDATA[git log -1 --format=%cI]]></LatestCommitTimestampScript>
         <ArtifactsDirectory Condition=" '$(ArtifactsDirectory)' == '' ">$(SolutionDir)artifacts\</ArtifactsDirectory>
         <Company>ED</Company>
         <Authors Condition=" '$(Authors)' == '' ">$(Company)</Authors>
